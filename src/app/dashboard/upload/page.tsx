@@ -1,7 +1,9 @@
 'use client';
 
- import { useEffect, useMemo, useState } from 'react';
- import { useRouter } from 'next/navigation';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { sanitizeText, sanitizeUrl, sanitizeStringArray } from '@/lib/sanitize';
+import { FaBoxOpen, FaBook, FaImage, FaFlask, FaFileAlt } from 'react-icons/fa';
 
 export default function UploadProductPage() {
   const router = useRouter();
@@ -93,18 +95,18 @@ export default function UploadProductPage() {
     setSuccess(null);
 
     const errors: string[] = [];
-    const priceNum = Number(formData.price);
+    const priceNum = Number(sanitizeText(formData.price));
     const isValidUrl = (v: string) => {
       if (!v) return true;
       try { new URL(v); return true; } catch { return false; }
     };
-    if (!formData.name.trim()) errors.push('Nama wajib diisi');
-    if (!formData.brand.trim()) errors.push('Brand wajib diisi');
-    if (!formData.category.trim()) errors.push('Kategori wajib diisi');
-    if (!formData.description.trim()) errors.push('Deskripsi wajib diisi');
+    if (!sanitizeText(formData.name).trim()) errors.push('Nama wajib diisi');
+    if (!sanitizeText(formData.brand).trim()) errors.push('Brand wajib diisi');
+    if (!sanitizeText(formData.category).trim()) errors.push('Kategori wajib diisi');
+    if (!sanitizeText(formData.description).trim()) errors.push('Deskripsi wajib diisi');
     if (!Number.isFinite(priceNum) || priceNum <= 0) errors.push('Harga harus angka > 0');
-    if (!isValidUrl(formData.tokopedia_url)) errors.push('Tokopedia URL tidak valid');
-    if (!isValidUrl(formData.shopee_url)) errors.push('Shopee URL tidak valid');
+    if (!isValidUrl(sanitizeUrl(formData.tokopedia_url))) errors.push('Tokopedia URL tidak valid');
+    if (!isValidUrl(sanitizeUrl(formData.shopee_url))) errors.push('Shopee URL tidak valid');
 
     if (errors.length) {
       setError(errors.join(' • '));
@@ -114,19 +116,19 @@ export default function UploadProductPage() {
 
     try {
       const body = new FormData();
-      body.append('name', formData.name);
-      body.append('brand', formData.brand);
-      body.append('category', formData.category);
-      body.append('description', formData.description);
+      body.append('name', sanitizeText(formData.name));
+      body.append('brand', sanitizeText(formData.brand));
+      body.append('category', sanitizeText(formData.category));
+      body.append('description', sanitizeText(formData.description));
       body.append('price', String(priceNum));
       body.append('featured', String(!!formData.featured));
-      body.append('ingredients', formData.ingredients || '');
-      body.append('usage', formData.usage || '');
-      body.append('size', formData.size || '');
-      body.append('skin_types', JSON.stringify(skinTypes || []));
-      body.append('concerns', JSON.stringify(concerns || []));
-      body.append('tokopedia_url', formData.tokopedia_url || '');
-      body.append('shopee_url', formData.shopee_url || '');
+      body.append('ingredients', sanitizeText(formData.ingredients) || '');
+      body.append('usage', sanitizeText(formData.usage) || '');
+      body.append('size', sanitizeText(formData.size) || '');
+      body.append('skin_types', JSON.stringify(sanitizeStringArray(skinTypes || [])));
+      body.append('concerns', JSON.stringify(sanitizeStringArray(concerns || [])));
+      body.append('tokopedia_url', sanitizeUrl(formData.tokopedia_url) || '');
+      body.append('shopee_url', sanitizeUrl(formData.shopee_url) || '');
       if (image) body.append('image', image);
 
       // Debug: lihat pasangan key/value yang akan dikirim (untuk File hanya tampil meta)
@@ -160,7 +162,9 @@ export default function UploadProductPage() {
   return (
     <div className="container mx-auto max-w-4xl">
       <div className="text-center mt-4 mb-6">
-        <div className="mx-auto w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-2xl">📦</div>
+        <div className="mx-auto w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-2xl">
+          <FaBoxOpen size={24} />
+        </div>
         <h1 className="text-3xl font-extrabold mt-3 text-gray-900 dark:text-white">Upload Produk Kosmetik</h1>
         <p className="text-gray-500 dark:text-gray-400">Tambahkan produk baru ke dalam katalog</p>
         <div className="mt-4 h-2 w-full rounded bg-gray-200 dark:bg-gray-700 overflow-hidden">
@@ -177,21 +181,21 @@ export default function UploadProductPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <section className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
           <h2 className="font-semibold text-lg text-gray-900 dark:text-white flex items-center gap-2">
-            <span className="text-indigo-500">📘</span> Info Dasar Produk
+            <span className="text-indigo-500"><FaBook size={16} /></span> Info Dasar Produk
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Nama, brand, kategori, dan harga produk (wajib diisi)</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-1" htmlFor="name">Nama Produk *</label>
-              <input id="name" type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" required />
+              <input id="name" type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: sanitizeText(e.target.value) })} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" required />
             </div>
             <div>
               <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-1" htmlFor="brand">Brand *</label>
-              <input id="brand" type="text" value={formData.brand} onChange={(e) => setFormData({ ...formData, brand: e.target.value })} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" required />
+              <input id="brand" type="text" value={formData.brand} onChange={(e) => setFormData({ ...formData, brand: sanitizeText(e.target.value) })} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" required />
             </div>
             <div>
               <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-1" htmlFor="category">Kategori *</label>
-              <select id="category" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+              <select id="category" value={formData.category} onChange={(e) => setFormData({ ...formData, category: sanitizeText(e.target.value) })} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
                 <option value="">Pilih kategori produk</option>
                 {categories.map((c) => (
                   <option key={c} value={c}>{c}</option>
@@ -200,7 +204,7 @@ export default function UploadProductPage() {
             </div>
             <div>
               <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-1" htmlFor="price">Harga (Rp) *</label>
-              <input id="price" type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} min="0" step="1" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" required />
+              <input id="price" type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: sanitizeText(e.target.value) })} min="0" step="1" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" required />
             </div>
           </div>
           <label className="mt-3 inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
@@ -211,7 +215,7 @@ export default function UploadProductPage() {
 
         <section className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
           <h2 className="font-semibold text-lg text-gray-900 dark:text-white flex items-center gap-2">
-            <span className="text-purple-500">🖼️</span> Detail Produk
+            <span className="text-purple-500"><FaImage size={16} /></span> Detail Produk
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Upload gambar dan deskripsi produk</p>
           <div>
@@ -229,18 +233,18 @@ export default function UploadProductPage() {
           </div>
           <div className="mt-4">
             <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2" htmlFor="description">Deskripsi Produk</label>
-            <textarea id="description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={4} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Deskripsi singkat tentang produk ini..." required />
+            <textarea id="description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: sanitizeText(e.target.value) })} rows={4} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Deskripsi singkat tentang produk ini..." required />
           </div>
         </section>
 
         <section className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
           <h2 className="font-semibold text-lg text-gray-900 dark:text-white flex items-center gap-2">
-            <span className="text-emerald-500">🧪</span> Spesifikasi Produk
+            <span className="text-emerald-500"><FaFlask size={16} /></span> Spesifikasi Produk
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Ingredients, jenis kulit, dan masalah kulit yang ditangani</p>
           <div className="mb-4">
             <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Ingredients (pisahkan dengan koma)</label>
-            <input type="text" value={formData.ingredients} onChange={(e) => setFormData({ ...formData, ingredients: e.target.value })} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Aqua, Glycerin, Niacinamide, ..." />
+            <input type="text" value={formData.ingredients} onChange={(e) => setFormData({ ...formData, ingredients: sanitizeText(e.target.value) })} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Aqua, Glycerin, Niacinamide, ..." />
           </div>
           <div className='mb-4'>
               <p className="font-semibold text-lg text-gray-900 dark:text-white flex items-center gap-1">
@@ -272,17 +276,17 @@ export default function UploadProductPage() {
 
         <section className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
           <h2 className="font-semibold text-lg text-gray-900 dark:text-white flex items-center gap-2">
-            <span className="text-amber-500">📄</span> Info Tambahan
+            <span className="text-amber-500"><FaFileAlt size={16} /></span> Info Tambahan
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Cara penggunaan dan ukuran produk</p>
           <div className="mb-4">
             <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Cara Penggunaan</label>
-            <textarea value={formData.usage} onChange={(e) => setFormData({ ...formData, usage: e.target.value })} rows={3} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Aplikasikan pada wajah yang sudah dibersihkan..." />
+            <textarea value={formData.usage} onChange={(e) => setFormData({ ...formData, usage: sanitizeText(e.target.value) })} rows={3} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Aplikasikan pada wajah yang sudah dibersihkan..." />
           </div>
           <div className="grid grid-cols-1 gap-3 items-end">
             <div>
               <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Ukuran/Volume</label>
-              <input type="text" value={formData.size} onChange={(e) => setFormData({ ...formData, size: e.target.value })} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="50ml, 100ml, 236ml, dll" />
+              <input type="text" value={formData.size} onChange={(e) => setFormData({ ...formData, size: sanitizeText(e.target.value) })} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="50ml, 100ml, 236ml, dll" />
             </div>
           </div>
         </section>
@@ -295,11 +299,11 @@ export default function UploadProductPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-1" htmlFor="tokopedia_url">Tokopedia URL</label>
-              <input id="tokopedia_url" type="url" placeholder="https://www.tokopedia.com/..." value={formData.tokopedia_url} onChange={(e) => setFormData({ ...formData, tokopedia_url: e.target.value })} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+              <input id="tokopedia_url" type="url" placeholder="https://www.tokopedia.com/..." value={formData.tokopedia_url} onChange={(e) => setFormData({ ...formData, tokopedia_url: sanitizeUrl(e.target.value) })} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
             </div>
             <div>
               <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-1" htmlFor="shopee_url">Shopee URL</label>
-              <input id="shopee_url" type="url" placeholder="https://shopee.co.id/..." value={formData.shopee_url} onChange={(e) => setFormData({ ...formData, shopee_url: e.target.value })} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+              <input id="shopee_url" type="url" placeholder="https://shopee.co.id/..." value={formData.shopee_url} onChange={(e) => setFormData({ ...formData, shopee_url: sanitizeUrl(e.target.value) })} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
             </div>
           </div>
         </section>
