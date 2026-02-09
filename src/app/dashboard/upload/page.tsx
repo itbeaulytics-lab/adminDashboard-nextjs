@@ -196,6 +196,20 @@ export default function UploadProductPage() {
               />
             </div>
 
+            {/* Description */}
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700 dark:text-gray-300" htmlFor="description">Deskripsi Produk <span className="text-red-500">*</span></label>
+              <textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: sanitizeText(e.target.value) })}
+                rows={4}
+                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-600 resize-y min-h-[100px]"
+                placeholder="Jelaskan detail produk secara lengkap..."
+                required
+              />
+            </div>
+
             {/* Ingredients */}
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Ingredients (pisahkan dengan koma)</label>
