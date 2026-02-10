@@ -1,15 +1,141 @@
-import React from 'react';
-import { Package, FileText, FlaskConical, Link as LinkIcon, AlertCircle, Plus, X } from 'lucide-react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { Package, FileText, FlaskConical, Link as LinkIcon, AlertCircle, Plus, X, ChevronDown, Check, Search } from 'lucide-react';
 import ImageUploader from '@/components/upload/ImageUploader';
-import { FormData } from '@/hooks/useProductForm'; // Import interface
+import { FormData } from '@/hooks/useProductForm';
+
+// --- KOMPONEN DROPDOWN KEREN (INTERNAL) ---
+interface SearchableSelectProps {
+    label: string;
+    options: { id: string | number; name: string }[];
+    value: string | number;
+    onChange: (value: string) => void;
+    placeholder?: string;
+    disabled?: boolean;
+    required?: boolean;
+    onAddNew?: () => void; // Tombol plus
+}
+
+const SearchableSelect = ({ label, options, value, onChange, placeholder, disabled, required, onAddNew }: SearchableSelectProps) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    // Cari nama item yang sedang dipilih untuk ditampilkan di tombol
+    const selectedItem = options.find(opt => String(opt.id) === String(value));
+
+    // Filter list berdasarkan search
+    const filteredOptions = options.filter(opt =>
+        opt.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    // Tutup dropdown kalau klik di luar
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    return (
+        <div className="space-y-2 relative" ref={containerRef}>
+            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                {label} {required && <span className="text-red-500">*</span>}
+            </label>
+            
+            {/* TRIGGER BUTTON (Tampilan Input) */}
+            <div className="flex gap-2">
+                <div 
+                    onClick={() => !disabled && setIsOpen(!isOpen)}
+                    className={`
+                        relative w-full px-4 py-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all
+                        ${disabled ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-60' : 'bg-gray-50 dark:bg-[#0a0a0a] hover:bg-white dark:hover:bg-black'}
+                        ${isOpen ? 'ring-2 ring-indigo-500 border-transparent' : 'border-gray-200 dark:border-gray-800'}
+                    `}
+                >
+                    <span className={`block truncate ${!selectedItem ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'}`}>
+                        {selectedItem ? selectedItem.name : placeholder}
+                    </span>
+                    <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                </div>
+
+                {/* Tombol Plus (Opsional untuk Kategori) */}
+                {onAddNew && (
+                    <button
+                        type="button"
+                        onClick={onAddNew}
+                        className="p-3 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors flex-shrink-0"
+                        title="Tambah Baru"
+                    >
+                        <Plus size={20} />
+                    </button>
+                )}
+            </div>
+
+            {/* DROPDOWN MENU (Muncul saat diklik) */}
+            {isOpen && !disabled && (
+                <div className="absolute z-50 w-full mt-2 bg-white dark:bg-[#1e1e1e] rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                    
+                    {/* Search Bar Sticky */}
+                    <div className="p-2 border-b border-gray-100 dark:border-gray-700 sticky top-0 bg-white dark:bg-[#1e1e1e]">
+                        <div className="relative">
+                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                className="w-full pl-9 pr-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-900 text-sm text-gray-700 dark:text-gray-200 outline-none focus:ring-1 focus:ring-indigo-500"
+                                placeholder="Cari..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                autoFocus
+                            />
+                        </div>
+                    </div>
+
+                    {/* List Items */}
+                    <div className="max-h-60 overflow-y-auto p-1 custom-scrollbar">
+                        {filteredOptions.length > 0 ? (
+                            filteredOptions.map((option) => (
+                                <div
+                                    key={option.id}
+                                    onClick={() => {
+                                        onChange(String(option.id));
+                                        setIsOpen(false);
+                                        setSearchTerm('');
+                                    }}
+                                    className={`
+                                        flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors
+                                        ${String(value) === String(option.id) 
+                                            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium' 
+                                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}
+                                    `}
+                                >
+                                    <span>{option.name}</span>
+                                    {String(value) === String(option.id) && <Check size={14} />}
+                                </div>
+                            ))
+                        ) : (
+                            <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                                Tidak ditemukan "{searchTerm}"
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// --- MAIN COMPONENT ---
 
 interface ProductFormProps {
     formData: FormData;
     setFormData: React.Dispatch<React.SetStateAction<FormData>>;
 
     // Lists
-    categoriesList: { id: string; name: string }[];
-    productTypesList: { id: string; name: string }[];
+    categoriesList: { id: string | number; name: string }[];
+    productTypesList: { id: string | number; name: string; category_id: string | number }[]; // Note: category_id included
     skinTypeOptions: string[];
     concernOptions: string[];
 
@@ -52,10 +178,19 @@ export default function ProductForm({
     isEditMode, onCancel
 }: ProductFormProps) {
 
-    const sanitize = (val: string) => val;
-    const [showCategoryModal, setShowCategoryModal] = React.useState(false);
-    const [newCategoryName, setNewCategoryName] = React.useState('');
-    const [isAddingCategory, setIsAddingCategory] = React.useState(false);
+    const [showCategoryModal, setShowCategoryModal] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [isAddingCategory, setIsAddingCategory] = useState(false);
+
+    // Filter Tipe Produk sesuai Kategori yang dipilih
+    const availableProductTypes = useMemo(() => {
+        if (!formData.category_id) return [];
+        return productTypesList.filter((type) => {
+            const typeCatId = String(type.category_id);
+            const selectedCatId = String(formData.category_id);
+            return typeCatId === selectedCatId;
+        });
+    }, [formData.category_id, productTypesList]);
 
     const handleAddCategory = async () => {
         if (!newCategoryName.trim() || !addNewCategory) return;
@@ -86,7 +221,6 @@ export default function ProductForm({
                     {isEditMode ? 'Perbarui informasi dan detail produk' : 'Tambahkan produk baru ke dalam katalog'}
                 </p>
 
-                {/* Progress Bar */}
                 <div className="mt-8 h-1 w-full max-w-md mx-auto rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
                     <div className="h-full bg-indigo-500 transition-all duration-300 ease-out" style={{ width: `${progress}%` }} />
                 </div>
@@ -140,60 +274,35 @@ export default function ProductForm({
                             />
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300" htmlFor="category">Kategori <span className="text-red-500">*</span></label>
-                            <div className="flex gap-2 items-center">
-                                <div className="relative w-full">
-                                    <select
-                                        id="category"
-                                        value={formData.category_id}
-                                        onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                                        className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer"
-                                        required
-                                    >
-                                        <option value="">Pilih kategori produk</option>
-                                        {categoriesList.map((c) => (
-                                            <option key={c.id} value={c.id}>{c.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setShowCategoryModal(true)}
-                                className="p-3 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
-                                title="Tambah Kategori Baru"
-                            >
-                                <Plus size={20} />
-                            </button>
-                        </div>
-                        {!isEditMode && categoriesList.length === 0 && handleSeedData && (
-                            <button type="button" onClick={handleSeedData} disabled={seeding} className="text-xs text-indigo-600 hover:text-indigo-500 font-medium mt-1">
-                                {seeding ? 'Mengisi data...' : 'Data kosong? Isi Default'}
-                            </button>
-                        )}
+                        {/* --- KATEGORI (CUSTOM DROPDOWN) --- */}
+                        <SearchableSelect
+                            label="Kategori"
+                            required
+                            options={categoriesList}
+                            value={formData.category_id}
+                            onChange={(val) => {
+                                setFormData({ 
+                                    ...formData, 
+                                    category_id: val,
+                                    product_type_id: '' // Reset tipe saat kategori berubah
+                                });
+                            }}
+                            placeholder="Pilih kategori produk"
+                            onAddNew={() => setShowCategoryModal(true)}
+                        />
 
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300" htmlFor="product_type">Tipe Produk <span className="text-red-500">*</span></label>
-                            <div className="relative">
-                                <select
-                                    id="product_type"
-                                    value={formData.product_type_id}
-                                    onChange={(e) => setFormData({ ...formData, product_type_id: e.target.value })}
-                                    className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer"
-                                    required
-                                >
-                                    <option value="">Pilih tipe produk</option>
-                                    {productTypesList.map((t) => (
-                                        <option key={t.id} value={t.id}>{t.name}</option>
-                                    ))}
-                                </select>
-                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
-                                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                </div>
-                            </div>
-                        </div>
+                        {/* --- TIPE PRODUK (CUSTOM DROPDOWN) --- */}
+                        <SearchableSelect
+                            label="Tipe Produk"
+                            required
+                            options={availableProductTypes}
+                            value={formData.product_type_id}
+                            onChange={(val) => setFormData({ ...formData, product_type_id: val })}
+                            placeholder={formData.category_id ? "Pilih tipe produk" : "Pilih kategori terlebih dahulu"}
+                            disabled={!formData.category_id}
+                        />
 
+                        {/* Harga */}
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-gray-700 dark:text-gray-300" htmlFor="price">Harga (Rp) <span className="text-red-500">*</span></label>
                             <input
@@ -210,6 +319,7 @@ export default function ProductForm({
                         </div>
                     </div>
 
+                    {/* Checkbox Featured */}
                     <div className="mt-6 flex items-center">
                         <label className="relative inline-flex items-center cursor-pointer group">
                             <input
@@ -222,6 +332,14 @@ export default function ProductForm({
                             <span className="ms-3 text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">Jadikan produk unggulan (featured)</span>
                         </label>
                     </div>
+
+                    {!isEditMode && categoriesList.length === 0 && handleSeedData && (
+                        <div className="mt-4">
+                            <button type="button" onClick={handleSeedData} disabled={seeding} className="text-xs text-indigo-600 hover:text-indigo-500 font-medium">
+                                {seeding ? 'Mengisi data...' : 'Data kosong? Isi Default'}
+                            </button>
+                        </div>
+                    )}
                 </section>
 
                 {/* Detail Produk */}
@@ -293,6 +411,7 @@ export default function ProductForm({
                             </div>
                         </div>
 
+                        {/* Options Skin & Concerns */}
                         <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800">
                             <div>
                                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Jenis Kulit Yang Cocok</h3>
@@ -369,7 +488,7 @@ export default function ProductForm({
                     </div>
                 </section>
 
-                {/* Action Buttons */}
+                {/* Footer Buttons */}
                 <div className="flex items-center justify-end gap-4 pt-4">
                     <button
                         type="button"
@@ -394,6 +513,7 @@ export default function ProductForm({
                     <span className="font-medium">{success}</span>
                 </div>
             )}
+            
             {/* Quick Add Category Modal */}
             {showCategoryModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
