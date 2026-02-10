@@ -44,7 +44,11 @@ export function useProductForm({ productId }: { productId?: string | null } = {}
     const [image, setImage] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [existingImage, setExistingImage] = useState<string | null>(null);
+    
+    // Loading states
     const [isLoading, setIsLoading] = useState(false);
+    const [isInitialLoading, setIsInitialLoading] = useState(isEditMode); // Untuk mencegah error build Vercel
+    
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [progress, setProgress] = useState(0);
@@ -70,35 +74,44 @@ export function useProductForm({ productId }: { productId?: string | null } = {}
     useEffect(() => {
         if (isEditMode && productId) {
             const fetchProduct = async () => {
-                const supabase = createClientClient();
-                const { data: p, error: fetchErr } = await supabase
-                    .from('products')
-                    .select('*')
-                    .eq('id', productId)
-                    .single();
+                setIsInitialLoading(true);
+                try {
+                    const supabase = createClientClient();
+                    const { data: p, error: fetchErr } = await supabase
+                        .from('products')
+                        .select('*')
+                        .eq('id', productId)
+                        .single();
 
-                if (p && !fetchErr) {
-                    setFormData({
-                        name: p.name || '',
-                        brand: p.brand || '',
-                        category_id: String(p.category_id || ''),
-                        product_type_id: String(p.product_type_id || ''),
-                        price: String(p.price || ''),
-                        featured: !!p.featured,
-                        description: p.description || '',
-                        ingredients: Array.isArray(p.ingredients) ? p.ingredients.join(', ') : (p.ingredients || ''),
-                        usage: p.how_to_use || '',
-                        size: p.size || '',
-                        tokopedia_url: p.tokopedia_url || '',
-                        shopee_url: p.shopee_url || '',
-                    });
-                    setSkinTypes(toList(p.skin_type));
-                    setConcerns(toList(p.concerns));
-                    // Diubah dari p.image_url menjadi p.image sesuai skema SQL
-                    setExistingImage(p.image || null);
+                    if (p && !fetchErr) {
+                        setFormData({
+                            name: p.name || '',
+                            brand: p.brand || '',
+                            category_id: String(p.category_id || ''),
+                            product_type_id: String(p.product_type_id || ''),
+                            price: String(p.price || ''),
+                            featured: !!p.featured,
+                            description: p.description || '',
+                            ingredients: Array.isArray(p.ingredients) ? p.ingredients.join(', ') : (p.ingredients || ''),
+                            usage: p.how_to_use || '',
+                            size: p.size || '',
+                            tokopedia_url: p.tokopedia_url || '',
+                            shopee_url: p.shopee_url || '',
+                        });
+                        setSkinTypes(toList(p.skin_type));
+                        setConcerns(toList(p.concerns));
+                        // Menggunakan kolom 'image' sesuai skema SQL
+                        setExistingImage(p.image || null);
+                    }
+                } catch (err) {
+                    console.error("Error fetching product:", err);
+                } finally {
+                    setIsInitialLoading(false);
                 }
             };
             fetchProduct();
+        } else {
+            setIsInitialLoading(false);
         }
     }, [productId, isEditMode]);
 
@@ -150,7 +163,7 @@ export function useProductForm({ productId }: { productId?: string | null } = {}
                 concerns: concerns,
                 tokopedia_url: formData.tokopedia_url,
                 shopee_url: formData.shopee_url,
-                image: finalImageUrl // Diubah dari image_url menjadi image sesuai skema SQL
+                image: finalImageUrl // Menggunakan kunci 'image' agar sesuai tabel products
             };
 
             const { error: saveErr } = isEditMode 
@@ -171,7 +184,7 @@ export function useProductForm({ productId }: { productId?: string | null } = {}
     return {
         formData, setFormData, categoriesList, productTypesList,
         skinTypes, setSkinTypes, concerns, setConcerns,
-        isLoading, previewUrl, existingImage, 
+        isLoading, isInitialLoading, previewUrl, existingImage, 
         onImageSelect: handleImageChange,
         onRemoveImage: () => { setImage(null); setPreviewUrl(null); setExistingImage(null); },
         handleSubmit, progress, error, success,
