@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Image as ImageIcon, Trash2, UploadCloud } from 'lucide-react';
+import { Image as ImageIcon, Trash2, UploadCloud, RefreshCw } from 'lucide-react';
 
 interface ImageUploaderProps {
     previewUrl: string | null;
@@ -33,58 +33,73 @@ export default function ImageUploader({ previewUrl, onImageSelect, onRemove }: I
         }
     };
 
+    const triggerFileSelect = () => {
+        if (fileInputRef.current) {
+            fileInputRef.current.click();
+        }
+    };
+
     return (
         <div className="w-full">
-            <div
-                className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer group ${previewUrl ? 'border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-900/10' : 'border-gray-300 dark:border-gray-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
-                onClick={() => !previewUrl && fileInputRef.current?.click()}
-            >
-                <input
-                    ref={fileInputRef}
-                    id="image"
-                    type="file"
-                    accept="image/*"
-                    onChange={onImageSelect}
-                    className="hidden"
-                />
+            <input
+                ref={fileInputRef}
+                id="image"
+                type="file"
+                accept="image/*"
+                onChange={onImageSelect}
+                className="hidden"
+            />
 
-                {previewUrl ? (
-                    <div className="relative inline-block w-full max-w-sm mx-auto group-image">
-                        <img
-                            src={previewUrl}
-                            alt="Preview"
-                            className="w-full h-64 rounded-lg shadow-md object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center backdrop-blur-sm">
-                            <button
-                                type="button"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onRemove();
-                                    if (fileInputRef.current) fileInputRef.current.value = '';
-                                }}
-                                className="bg-red-500 hover:bg-red-600 text-white p-3 rounded-xl shadow-lg transform hover:scale-110 transition-all flex items-center gap-2"
-                            >
-                                <Trash2 size={20} />
-                                <span className="font-medium">Hapus Gambar</span>
-                            </button>
-                        </div>
+            {previewUrl ? (
+                <div className="relative w-full aspect-square rounded-xl overflow-hidden group bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                    <img
+                        src={previewUrl}
+                        alt="Preview"
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center gap-3 backdrop-blur-[2px]">
+                        <button
+                            type="button"
+                            onClick={triggerFileSelect}
+                            className="flex items-center gap-2 px-4 py-2 bg-white/90 text-gray-900 rounded-lg hover:bg-white transition-colors shadow-lg font-medium text-sm"
+                        >
+                            <RefreshCw size={16} />
+                            Ganti
+                        </button>
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onRemove();
+                                if (fileInputRef.current) fileInputRef.current.value = '';
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-red-500/90 text-white rounded-lg hover:bg-red-600 transition-colors shadow-lg font-medium text-sm"
+                        >
+                            <Trash2 size={16} />
+                            Hapus
+                        </button>
                     </div>
-                ) : (
-                    <div className="py-8 space-y-4">
-                        <div className="mx-auto w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-500 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <UploadCloud size={32} />
-                        </div>
-                        <div>
-                            <p className="text-lg font-semibold text-gray-700 dark:text-gray-200">Klik untuk upload gambar</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">atau drag and drop file di sini</p>
-                        </div>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">PNG, JPG, HEIC up to 5MB</p>
+                </div>
+            ) : (
+                <div
+                    className="relative w-full aspect-[4/3] rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-indigo-500 dark:hover:border-indigo-400 bg-gray-50 dark:bg-gray-800/50 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/10 transition-all duration-300 cursor-pointer flex flex-col items-center justify-center text-center p-6 group"
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    onClick={triggerFileSelect}
+                >
+                    <div className="w-16 h-16 rounded-full bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center text-gray-400 group-hover:text-indigo-500 group-hover:scale-110 transition-all duration-300 mb-4 border border-gray-100 dark:border-gray-700">
+                        <UploadCloud size={32} />
                     </div>
-                )}
-            </div>
+                    <div className="space-y-1">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                            Klik untuk upload gambar
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                            atau drag and drop file di sini
+                        </p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

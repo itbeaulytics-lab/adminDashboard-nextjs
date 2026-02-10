@@ -51,8 +51,7 @@ export default function ProductForm({
     isEditMode, onCancel
 }: ProductFormProps) {
 
-    // Helper to sanitize input (inline or imported if you prefer)
-    const sanitize = (val: string) => val; // Simplify for UI component, passed logic should handle it
+    const sanitize = (val: string) => val;
 
     return (
         <div className="container mx-auto max-w-5xl py-8">
