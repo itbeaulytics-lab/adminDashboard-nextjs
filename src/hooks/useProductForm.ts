@@ -403,6 +403,26 @@ export function useProductForm({ productId }: UseProductFormProps = {}) {
         onRemoveImage,
         handleSubmit,
         handleSeedData,
+        addNewCategory: async (name: string) => {
+            try {
+                const supabase = createClientClient();
+                const { data, error } = await supabase
+                    .from('categories')
+                    .insert({ name })
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                if (data) {
+                    setCategoriesList((prev) => [...prev, data]);
+                    setFormData((prev) => ({ ...prev, category_id: data.id })); // Auto select
+                    return data;
+                }
+            } catch (err: any) {
+                console.error('Error adding category:', err);
+                throw err;
+            }
+        },
         seeding,
         progress,
         error,
