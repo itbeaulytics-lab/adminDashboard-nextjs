@@ -53,20 +53,15 @@ export default function ProductsPage() {
     router.push(`/dashboard/products/edit/${product.id}`);
   };
 
-  const handleDeleteProduct = async (id: string) => {
-    if (confirm('Apakah Anda yakin ingin menghapus produk ini?')) {
-      try {
-        const supabase = createClientClient();
-        const { error } = await supabase.from('products').delete().eq('id', id);
-        if (error) throw error;
-        // Optimistic update
-        setProducts(products.filter((p) => p.id !== id));
-      } catch (error) {
-        console.error('Error deleting product:', error);
-        alert('Gagal menghapus produk');
-      }
-    }
+  // --- PERBAIKAN DISINI ---
+  const handleDeleteProduct = (id: string) => {
+    // KITA HAPUS SEMUA LOGIC CONFIRM & DELETE DATABASE DISINI.
+    // Karena ProductCard.tsx sudah melakukan penghapusan data & storage.
+    // Tugas Parent hanya update UI state biar itemnya hilang dari layar.
+    
+    setProducts((prevProducts) => prevProducts.filter((p) => p.id !== id));
   };
+  // ------------------------
 
   return (
     <div className="space-y-6">
@@ -144,7 +139,7 @@ export default function ProductsPage() {
             <ProductCard
               key={product.id}
               product={product}
-              onDelete={handleDeleteProduct}
+              onDelete={handleDeleteProduct} // Sekarang aman, cuma update state
               onEdit={handleEditProduct}
               variant="grid"
             />
