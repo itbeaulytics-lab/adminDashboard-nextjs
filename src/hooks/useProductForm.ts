@@ -1,9 +1,11 @@
+"use client";
+
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientClient } from '@/lib/supabaseClient';
 import { sanitizeText } from '@/lib/sanitize';
-import imageCompression from 'browser-image-compression';
 
+// --- INTERFACES ---
 export interface FormData {
     name: string;
     brand: string;
@@ -19,7 +21,23 @@ export interface FormData {
     shopee_url: string;
 }
 
-// --- HELPER BARU UNTUK MEMBERSIHKAN DATA JSON YANG RUSAK/BERLAPIS ---
+// --- HELPER BARU: DYNAMIC IMPORT IMAGE COMPRESSION ---
+// Sesuai request: menggunakan dynamic import agar library diload saat dibutuhkan saja
+export const compressImage = async (file: File) => {
+    const imageCompression = (await import('browser-image-compression')).default;
+
+    const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+    };
+
+    const compressedFile = await imageCompression(file, options);
+
+    return compressedFile;
+};
+
+// --- HELPER UNTUK MEMBERSIHKAN DATA JSON YANG RUSAK/BERLAPIS ---
 function parseSupabaseData(val: any): string[] {
     if (!val) return [];
 
@@ -136,7 +154,7 @@ export function useProductForm({ productId }: { productId?: string | null } = {}
                             shopee_url: p.shopee_url || '',
                         });
 
-                        // --- FIX: Gunakan helper parseSupabaseData untuk menangani JSON kotor ---
+                        // Gunakan helper parseSupabaseData untuk menangani JSON kotor
                         setSkinTypes(parseSupabaseData(p.skin_type));
                         setConcerns(parseSupabaseData(p.concerns));
                         
@@ -161,7 +179,7 @@ export function useProductForm({ productId }: { productId?: string | null } = {}
         setProgress(Math.round((filled / (requiredFields.length + 1)) * 100));
     }, [formData, image, existingImage]);
 
-    // --- LOGIKA UTAMA KOMPRESI (UPDATED) ---
+    // --- LOGIKA IMAGE CHANGE YANG DIPERBARUI MENGGUNAKAN HELPER BARU ---
     const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -172,33 +190,11 @@ export function useProductForm({ productId }: { productId?: string | null } = {}
             }
 
             try {
-                // SETTING LIMIT (0.55 MB = 550 KB)
-                const MAX_SIZE_MB = 0.55; 
-                const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024; 
-
                 console.log(`[Check] Ukuran asli: ${(file.size / 1024).toFixed(2)} KB`);
-
-                // KONDISI 1: Jika file sudah <= 550KB, Skip Kompresi
-                if (file.size <= MAX_SIZE_BYTES) {
-                    console.log("[Check] File sudah kecil, skip kompresi.");
-                    if (previewUrl) URL.revokeObjectURL(previewUrl);
-                    setImage(file);
-                    setPreviewUrl(URL.createObjectURL(file));
-                    return; 
-                }
-
-                // KONDISI 2: Jika file > 550KB, Lakukan Kompresi & Convert ke JPEG
-                console.log("[Check] File besar, mulai kompresi...");
                 
-                const options = {
-                    maxSizeMB: MAX_SIZE_MB,  // Target 0.55 MB
-                    maxWidthOrHeight: 1920,  // Max dimensi Full HD
-                    useWebWorker: true,
-                    fileType: "image/jpeg",  // Paksa ke JPEG
-                    initialQuality: 0.8      // Mulai dari kualitas 80%
-                };
-
-                const compressedFile = await imageCompression(file, options);
+                // Panggil fungsi compressImage yang baru dibuat
+                const compressedFile = await compressImage(file);
+                
                 console.log(`[Check] Hasil kompresi: ${(compressedFile.size / 1024).toFixed(2)} KB`);
                 
                 if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -206,7 +202,7 @@ export function useProductForm({ productId }: { productId?: string | null } = {}
                 setPreviewUrl(URL.createObjectURL(compressedFile));
             } catch (error) {
                 console.error("Gagal melakukan kompresi gambar, pakai file asli:", error);
-                // Fallback ke file asli
+                // Fallback ke file asli jika error
                 if (previewUrl) URL.revokeObjectURL(previewUrl);
                 setImage(file);
                 setPreviewUrl(URL.createObjectURL(file));
@@ -227,15 +223,18 @@ export function useProductForm({ productId }: { productId?: string | null } = {}
                 // Penanganan Ekstensi File
                 let fileExt = image.name.split('.').pop();
                 
-                // Jika tipe filenya JPEG (hasil kompresi), paksa ekstensi jadi .jpg
-                if (image.type === 'image/jpeg') {
-                    fileExt = 'jpg';
+                // Jika tipe filenya JPEG (hasil kompresi biasanya jadi blob/jpeg), pastikan ekstensi sesuai
+                if (image.type === 'image/jpeg' || image.type === 'image/jpg') {
+                     // Jika aslinya png tapi dikompres jadi jpeg, kita prefer simpan sbg jpg
+                     if (fileExt !== 'jpg' && fileExt !== 'jpeg') {
+                        fileExt = 'jpg';
+                     }
                 }
                 
                 const fileName = `${Date.now()}_product.${fileExt}`;
                 
                 const { error: upErr } = await supabase.storage.from('bucket1').upload(`products/${fileName}`, image, {
-                    contentType: image.type, // Pastikan content-type sesuai (misal image/jpeg)
+                    contentType: image.type, 
                     cacheControl: '3600',
                     upsert: false
                 });
