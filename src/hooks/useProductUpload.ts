@@ -169,10 +169,6 @@ export function useProductUpload() {
 
         const errors: string[] = [];
         const priceNum = Number(sanitizeText(formData.price));
-        const isValidUrl = (v: string) => {
-            if (!v) return true;
-            try { new URL(v); return true; } catch { return false; }
-        };
 
         if (!sanitizeText(formData.name).trim()) errors.push('Nama wajib diisi');
         if (!sanitizeText(formData.brand).trim()) errors.push('Brand wajib diisi');
@@ -199,8 +195,14 @@ export function useProductUpload() {
             body.append('ingredients', sanitizeText(formData.ingredients) || '');
             body.append('usage', sanitizeText(formData.usage) || '');
             body.append('size', sanitizeText(formData.size) || '');
+            
+            // --- UPDATED LOGIC FOR ARRAY FIELDS ---
+            // Kita gunakan JSON.stringify hanya sekali di sini. 
+            // Pastikan di sisi Route Handler (API), data ini di-parse kembali sebelum masuk ke Supabase.
             body.append('skin_types', JSON.stringify(sanitizeStringArray(skinTypes || [])));
             body.append('concerns', JSON.stringify(sanitizeStringArray(concerns || [])));
+            // ---------------------------------------
+
             body.append('tokopedia_url', sanitizeUrl(formData.tokopedia_url) || '');
             body.append('shopee_url', sanitizeUrl(formData.shopee_url) || '');
             if (image) body.append('image', image);

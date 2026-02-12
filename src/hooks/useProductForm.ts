@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientClient } from '@/lib/supabaseClient';
 import { sanitizeText } from '@/lib/sanitize';
+import imageCompression from 'browser-image-compression';
 
 export interface FormData {
     name: string;
@@ -18,12 +19,48 @@ export interface FormData {
     shopee_url: string;
 }
 
-function toList(val: any): string[] {
+// --- HELPER BARU UNTUK MEMBERSIHKAN DATA JSON YANG RUSAK/BERLAPIS ---
+function parseSupabaseData(val: any): string[] {
     if (!val) return [];
-    if (Array.isArray(val)) return val.map(String);
-    if (typeof val === "string") {
-        return val.split(',').map(s => s.trim()).filter(Boolean);
+
+    try {
+        // Case 1: Jika sudah berbentuk Array
+        if (Array.isArray(val)) {
+            // Cek apakah ini array yang berisi JSON string kotor? Contoh: ["[\"Normal\"]"]
+            if (val.length > 0 && typeof val[0] === 'string' && (val[0].startsWith('[') || val[0].startsWith('"['))) {
+                try {
+                    // Coba parse isi array index ke-0
+                    const parsedInner = JSON.parse(val[0]);
+                    // Rekursif: Panggil fungsi ini lagi untuk hasil parsing tersebut
+                    return parseSupabaseData(parsedInner);
+                } catch (e) {
+                    // Jika gagal parse, kembalikan apa adanya
+                    return val.map(String);
+                }
+            }
+            // Jika array normal ['Normal', 'Oily']
+            return val.map(String);
+        }
+
+        // Case 2: Jika berbentuk String
+        if (typeof val === "string") {
+            const trimmed = val.trim();
+            // Jika terlihat seperti JSON array "[...]"
+            if (trimmed.startsWith('[')) {
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    return parseSupabaseData(parsed); // Rekursif
+                } catch (e) {
+                    // Fallback jika JSON invalid
+                }
+            }
+            // Fallback: Pisahkan berdasarkan koma biasa "A, B, C"
+            return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+        }
+    } catch (error) {
+        console.error("Gagal parsing data:", val, error);
     }
+
     return [];
 }
 
@@ -47,7 +84,7 @@ export function useProductForm({ productId }: { productId?: string | null } = {}
     
     // Loading states
     const [isLoading, setIsLoading] = useState(false);
-    const [isInitialLoading, setIsInitialLoading] = useState(isEditMode); // Untuk mencegah error build Vercel
+    const [isInitialLoading, setIsInitialLoading] = useState(isEditMode); 
     
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
@@ -98,9 +135,11 @@ export function useProductForm({ productId }: { productId?: string | null } = {}
                             tokopedia_url: p.tokopedia_url || '',
                             shopee_url: p.shopee_url || '',
                         });
-                        setSkinTypes(toList(p.skin_type));
-                        setConcerns(toList(p.concerns));
-                        // Menggunakan kolom 'image' sesuai skema SQL
+
+                        // --- FIX: Gunakan helper parseSupabaseData untuk menangani JSON kotor ---
+                        setSkinTypes(parseSupabaseData(p.skin_type));
+                        setConcerns(parseSupabaseData(p.concerns));
+                        
                         setExistingImage(p.image || null);
                     }
                 } catch (err) {
@@ -122,12 +161,56 @@ export function useProductForm({ productId }: { productId?: string | null } = {}
         setProgress(Math.round((filled / (requiredFields.length + 1)) * 100));
     }, [formData, image, existingImage]);
 
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // --- LOGIKA UTAMA KOMPRESI (UPDATED) ---
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            if (previewUrl) URL.revokeObjectURL(previewUrl);
-            setImage(file);
-            setPreviewUrl(URL.createObjectURL(file));
+            // Validasi tipe file
+            if (!file.type.startsWith('image/')) {
+                alert('File harus berupa gambar');
+                return;
+            }
+
+            try {
+                // SETTING LIMIT (0.55 MB = 550 KB)
+                const MAX_SIZE_MB = 0.55; 
+                const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024; 
+
+                console.log(`[Check] Ukuran asli: ${(file.size / 1024).toFixed(2)} KB`);
+
+                // KONDISI 1: Jika file sudah <= 550KB, Skip Kompresi
+                if (file.size <= MAX_SIZE_BYTES) {
+                    console.log("[Check] File sudah kecil, skip kompresi.");
+                    if (previewUrl) URL.revokeObjectURL(previewUrl);
+                    setImage(file);
+                    setPreviewUrl(URL.createObjectURL(file));
+                    return; 
+                }
+
+                // KONDISI 2: Jika file > 550KB, Lakukan Kompresi & Convert ke JPEG
+                console.log("[Check] File besar, mulai kompresi...");
+                
+                const options = {
+                    maxSizeMB: MAX_SIZE_MB,  // Target 0.55 MB
+                    maxWidthOrHeight: 1920,  // Max dimensi Full HD
+                    useWebWorker: true,
+                    fileType: "image/jpeg",  // Paksa ke JPEG
+                    initialQuality: 0.8      // Mulai dari kualitas 80%
+                };
+
+                const compressedFile = await imageCompression(file, options);
+                console.log(`[Check] Hasil kompresi: ${(compressedFile.size / 1024).toFixed(2)} KB`);
+                
+                if (previewUrl) URL.revokeObjectURL(previewUrl);
+                setImage(compressedFile);
+                setPreviewUrl(URL.createObjectURL(compressedFile));
+            } catch (error) {
+                console.error("Gagal melakukan kompresi gambar, pakai file asli:", error);
+                // Fallback ke file asli
+                if (previewUrl) URL.revokeObjectURL(previewUrl);
+                setImage(file);
+                setPreviewUrl(URL.createObjectURL(file));
+            }
         }
     };
 
@@ -141,12 +224,30 @@ export function useProductForm({ productId }: { productId?: string | null } = {}
             let finalImageUrl = existingImage;
 
             if (image) {
-                const fileExt = image.name.split('.').pop();
-                const fileName = `${Date.now()}.${fileExt}`;
-                const { error: upErr } = await supabase.storage.from('bucket1').upload(`products/${fileName}`, image);
+                // Penanganan Ekstensi File
+                let fileExt = image.name.split('.').pop();
+                
+                // Jika tipe filenya JPEG (hasil kompresi), paksa ekstensi jadi .jpg
+                if (image.type === 'image/jpeg') {
+                    fileExt = 'jpg';
+                }
+                
+                const fileName = `${Date.now()}_product.${fileExt}`;
+                
+                const { error: upErr } = await supabase.storage.from('bucket1').upload(`products/${fileName}`, image, {
+                    contentType: image.type, // Pastikan content-type sesuai (misal image/jpeg)
+                    cacheControl: '3600',
+                    upsert: false
+                });
+
                 if (upErr) throw upErr;
                 finalImageUrl = supabase.storage.from('bucket1').getPublicUrl(`products/${fileName}`).data.publicUrl;
             }
+
+            // Pastikan data ingredients menjadi array bersih
+            const ingredientsList = typeof formData.ingredients === 'string' 
+                ? formData.ingredients.split(',').map(i => i.trim()).filter(Boolean)
+                : [];
 
             const payload = {
                 name: sanitizeText(formData.name),
@@ -156,14 +257,14 @@ export function useProductForm({ productId }: { productId?: string | null } = {}
                 price: parseFloat(formData.price) || 0,
                 description: sanitizeText(formData.description),
                 featured: formData.featured,
-                ingredients: toList(formData.ingredients),
+                ingredients: ingredientsList, 
                 how_to_use: formData.usage,
                 size: formData.size,
-                skin_type: skinTypes,
-                concerns: concerns,
+                skin_type: skinTypes, // Kirim array murni, Supabase client akan handle formatnya
+                concerns: concerns,   // Kirim array murni
                 tokopedia_url: formData.tokopedia_url,
                 shopee_url: formData.shopee_url,
-                image: finalImageUrl // Menggunakan kunci 'image' agar sesuai tabel products
+                image: finalImageUrl
             };
 
             const { error: saveErr } = isEditMode 
