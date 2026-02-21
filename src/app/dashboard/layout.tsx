@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import Navbar from '@/components/Navbar';
+import Navbar from "@/shared/components/Navbar";
 import { useRouter, usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, Upload, Menu, X, LogOut } from 'lucide-react';
+import { LayoutDashboard, Package, Upload, Menu, X, LogOut, Beaker } from 'lucide-react';
 import { createClientClient } from '@/lib/supabaseClient';
 
 export default function DashboardLayout({
@@ -30,6 +30,11 @@ export default function DashboardLayout({
       icon: Upload,
       label: 'Upload Produk',
       path: '/dashboard/upload',
+    },
+    {
+      icon: Beaker,
+      label: 'Ingredients',
+      path: '/dashboard/ingredients',
     },
   ];
 
@@ -73,8 +78,8 @@ export default function DashboardLayout({
                     setIsSidebarOpen(false);
                   }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${isActive
-                      ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 font-medium shadow-sm'
-                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white'
+                    ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 font-medium shadow-sm'
+                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white'
                     }`}
                 >
                   <item.icon size={20} className={isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 group-hover:text-gray-600 dark:text-gray-500 dark:group-hover:text-gray-300'} />

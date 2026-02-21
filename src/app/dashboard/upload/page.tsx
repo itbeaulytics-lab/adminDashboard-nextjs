@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { useProductForm } from '@/hooks/useProductForm';
-import ProductForm from '@/components/dashboard/ProductForm';
+import { useProductForm } from "@/features/products/hooks/useProductForm";
+import ProductForm from "@/features/products/components/ProductForm";
 
 export default function UploadProductPage() {
   const router = useRouter();

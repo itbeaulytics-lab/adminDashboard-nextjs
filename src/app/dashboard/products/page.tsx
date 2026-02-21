@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientClient } from '@/lib/supabaseClient';
-import ProductCard from '@/components/ProductCard';
-import ProductsTable from '@/components/ProductsTable';
-import type { Product } from '@/types/product';
+import ProductCard from "@/features/products/components/ProductCard";
+import ProductsTable from "@/features/products/components/ProductsTable";
+import type { Product } from "@/features/products/types";
 import { Loader2, Search, LayoutGrid, List, Plus } from 'lucide-react';
 
 export default function ProductsPage() {

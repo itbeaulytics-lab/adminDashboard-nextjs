@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense } from 'react';
-import LoginContent from './LoginContent';
+import LoginContent from "@/features/auth/components/LoginContent";
 
 export default function Login() {
   return (
