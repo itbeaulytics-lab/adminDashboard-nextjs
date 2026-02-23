@@ -14,6 +14,7 @@ interface ProductFormProps {
     // Lists
     categoriesList: { id: string; name: string }[];
     productTypesList: { id: string; name: string }[];
+    existingCategories: string[]; // <-- Tambahan prop
     skinTypeOptions: string[];
     concernOptions: string[];
 
@@ -45,7 +46,7 @@ interface ProductFormProps {
 
 export default function ProductForm({
     formData, setFormData,
-    categoriesList, productTypesList,
+    categoriesList, productTypesList, existingCategories,
     skinTypeOptions, concernOptions,
     skinTypes, setSkinTypes,
     concerns, setConcerns,
@@ -88,6 +89,7 @@ export default function ProductForm({
                     setFormData={setFormData}
                     categoriesList={categoriesList}
                     productTypesList={productTypesList}
+                    existingCategories={existingCategories} // <-- Lempar ke section bawah
                     isEditMode={isEditMode}
                     handleSeedData={handleSeedData}
                     seeding={seeding}

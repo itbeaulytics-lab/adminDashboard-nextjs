@@ -7,7 +7,7 @@ export interface FormData {
     name: string;
     brand: string;
     category_id: string;
-    category: string; // <-- Tambahan field baru
+    category: string; 
     product_type_id: string;
     price: string;
     featured: boolean;
@@ -40,16 +40,17 @@ export function useProductForm({ productId }: { productId?: string | null } = {}
 
     const [categoriesList, setCategoriesList] = useState<{ id: string; name: string }[]>([]);
     const [productTypesList, setProductTypesList] = useState<{ id: string; name: string; category_id: string }[]>([]);
+    // State baru untuk menyimpan histori kategori dari database
+    const [existingCategories, setExistingCategories] = useState<string[]>([]);
+    
     const [skinTypes, setSkinTypes] = useState<string[]>([]);
     const [concerns, setConcerns] = useState<string[]>([]);
     const [image, setImage] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [existingImage, setExistingImage] = useState<string | null>(null);
     
-    // Loading states
     const [isLoading, setIsLoading] = useState(false);
     const [isInitialLoading, setIsInitialLoading] = useState(isEditMode); 
-    
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [progress, setProgress] = useState(0);
@@ -57,16 +58,25 @@ export function useProductForm({ productId }: { productId?: string | null } = {}
     const skinTypeOptions = useMemo(() => ['Normal', 'Combination', 'Dry', 'Sensitive', 'Oily', 'Acne-prone'], []);
     const concernOptions = useMemo(() => ['Acne', 'Dullness', 'Large Pores', 'Wrinkles', 'Aging', 'Fine Lines', 'Dark Spots', 'Hyperpigmentation', 'Redness', 'Uneven Skin Tone'], []);
 
-    // Load Data Kategori & Tipe
+    // Load Data Kategori, Tipe, dan Histori Sub-Kategori
     useEffect(() => {
         const loadInitialData = async () => {
             const supabase = createClientClient();
-            const [catRes, typeRes] = await Promise.all([
+            const [catRes, typeRes, existingCatRes] = await Promise.all([
                 supabase.from('categories').select('id, name').order('name'),
-                supabase.from('product_types').select('id, name, category_id').order('name')
+                supabase.from('product_types').select('id, name, category_id').order('name'),
+                // Ambil data category dari tabel products yang tidak kosong
+                supabase.from('products').select('category').not('category', 'is', null)
             ]);
+            
             if (catRes.data) setCategoriesList(catRes.data);
             if (typeRes.data) setProductTypesList(typeRes.data as any);
+            
+            // Filter supaya teksnya unik (tidak duplikat)
+            if (existingCatRes.data) {
+                const uniqueCats = Array.from(new Set(existingCatRes.data.map(p => p.category).filter(c => c && c.trim() !== '')));
+                setExistingCategories(uniqueCats);
+            }
         };
         loadInitialData();
     }, []);
@@ -89,7 +99,7 @@ export function useProductForm({ productId }: { productId?: string | null } = {}
                             name: p.name || '',
                             brand: p.brand || '',
                             category_id: String(p.category_id || ''),
-                            category: p.category || '', // <-- Load data text category
+                            category: p.category || '', 
                             product_type_id: String(p.product_type_id || ''),
                             price: String(p.price || ''),
                             featured: !!p.featured,
@@ -116,7 +126,7 @@ export function useProductForm({ productId }: { productId?: string | null } = {}
         }
     }, [productId, isEditMode]);
 
-    // Hitung Progress Form
+    // Hitung Progress
     useEffect(() => {
         const requiredFields = [formData.name, formData.brand, formData.category_id, formData.price, formData.description];
         const filled = requiredFields.filter(Boolean).length + (image || existingImage ? 1 : 0);
@@ -153,7 +163,7 @@ export function useProductForm({ productId }: { productId?: string | null } = {}
                 name: sanitizeText(formData.name),
                 brand: sanitizeText(formData.brand),
                 category_id: formData.category_id ? parseInt(formData.category_id) : null,
-                category: formData.category ? sanitizeText(formData.category) : null, // <-- Masukkan ke colom category tabel products
+                category: formData.category ? sanitizeText(formData.category) : null,
                 product_type_id: formData.product_type_id ? parseInt(formData.product_type_id) : null,
                 price: parseFloat(formData.price) || 0,
                 description: sanitizeText(formData.description),
@@ -185,6 +195,7 @@ export function useProductForm({ productId }: { productId?: string | null } = {}
 
     return {
         formData, setFormData, categoriesList, productTypesList,
+        existingCategories, // Export state baru ke komponen
         skinTypes, setSkinTypes, concerns, setConcerns,
         isLoading, isInitialLoading, previewUrl, existingImage, 
         onImageSelect: handleImageChange,

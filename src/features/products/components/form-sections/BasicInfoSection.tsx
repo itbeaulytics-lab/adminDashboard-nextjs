@@ -8,6 +8,7 @@ interface BasicInfoSectionProps {
     setFormData: React.Dispatch<React.SetStateAction<FormData>>;
     categoriesList: { id: string; name: string }[];
     productTypesList: { id: string; name: string; category_id?: string | number }[];
+    existingCategories: string[]; // <-- Terima properti ini
     isEditMode: boolean;
     handleSeedData?: () => void;
     seeding?: boolean;
@@ -18,6 +19,7 @@ export function BasicInfoSection({
     setFormData,
     categoriesList,
     productTypesList,
+    existingCategories,
     isEditMode,
     handleSeedData,
     seeding
@@ -29,12 +31,16 @@ export function BasicInfoSection({
         );
     }, [formData.category_id, productTypesList]);
 
-    // State untuk custom dropdown "Tambah category"
     const [isCustomCategoryOpen, setIsCustomCategoryOpen] = useState(false);
-    const defaultCategories = ['Cleanser', 'Toner', 'Serum', 'Moisturizer', 'Sunscreen', 'Sunblock'];
     
-    // Filter opsi berdasarkan teks yang diketik user
-    const filteredCategories = defaultCategories.filter(c => 
+    // Gabungkan list bawaan dengan histori dari database, dan buang yang duplikat
+    const allCategories = useMemo(() => {
+        const defaultCategories = ['Cleanser', 'Toner', 'Serum', 'Moisturizer', 'Sunscreen', 'Sunblock'];
+        return Array.from(new Set([...defaultCategories, ...existingCategories]));
+    }, [existingCategories]);
+    
+    // Filter berdasarkan ketikan user
+    const filteredCategories = allCategories.filter(c => 
         c.toLowerCase().includes((formData.category || '').toLowerCase())
     );
 
@@ -50,10 +56,7 @@ export function BasicInfoSection({
                 </div>
             </div>
 
-            {/* Grid Form */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                {/* Baris 1 */}
                 <div className="space-y-2">
                     <label className="text-sm font-semibold text-gray-700 dark:text-gray-300" htmlFor="name">Nama Produk <span className="text-red-500">*</span></label>
                     <input
@@ -80,7 +83,6 @@ export function BasicInfoSection({
                     />
                 </div>
 
-                {/* Baris 2 */}
                 <div className="space-y-2">
                     <label className="text-sm font-semibold text-gray-700 dark:text-gray-300" htmlFor="category">Kategori <span className="text-red-500">*</span></label>
                     <SearchableSelect
@@ -113,21 +115,18 @@ export function BasicInfoSection({
                     </div>
                 </div>
 
-                {/* Baris 3 */}
                 <div className="space-y-2">
                     <label className="text-sm font-semibold text-gray-700 dark:text-gray-300" htmlFor="price">Harga (Rp) <span className="text-red-500">*</span></label>
                     <div className="relative">
-                        {/* Teks "Rp" nempel di dalam input */}
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <span className="text-gray-500 dark:text-gray-400 font-medium sm:text-sm">Rp</span>
                         </div>
                         <input
                             id="price"
-                            type="text" 
-                            inputMode="numeric" // Membuka numpad di HP
+                            type="text"
+                            inputMode="numeric"
                             value={formData.price ? new Intl.NumberFormat('id-ID').format(parseInt(formData.price, 10)) : ''}
                             onChange={(e) => {
-                                // Hapus semua karakter selain angka biar state cuma nyimpen string angka murni
                                 const rawValue = e.target.value.replace(/\D/g, '');
                                 setFormData({ ...formData, price: rawValue });
                             }}
@@ -138,7 +137,6 @@ export function BasicInfoSection({
                     </div>
                 </div>
 
-                {/* Sub Kategori / Tambah Category (Sebelah kanan Harga) */}
                 <div className="space-y-2">
                     <label className="text-sm font-semibold text-gray-700 dark:text-gray-300" htmlFor="sub_category">Tambah Category <span className="text-red-500">*</span></label>
                     <div className="relative">
@@ -160,7 +158,6 @@ export function BasicInfoSection({
                             <ChevronDown size={20} className="absolute right-3 text-gray-400 pointer-events-none" />
                         </div>
 
-                        {/* Dropdown Menu */}
                         {isCustomCategoryOpen && (
                             <div className="absolute z-50 w-full mt-1 bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg max-h-48 overflow-y-auto py-1 animate-in fade-in zoom-in-95 duration-100">
                                 <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-800/50">
