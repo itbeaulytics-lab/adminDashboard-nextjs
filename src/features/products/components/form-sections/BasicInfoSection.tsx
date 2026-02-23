@@ -138,12 +138,13 @@ export function BasicInfoSection({
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300" htmlFor="sub_category">Tambah Category <span className="text-red-500">*</span></label>
+                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300" htmlFor="sub_category">Category (Usage/Step) <span className="text-red-500">*</span></label>
                     <div className="relative">
                         <div className="relative flex items-center">
                             <input
                                 id="sub_category"
                                 type="text"
+                                autoComplete="off"
                                 value={formData.category || ''}
                                 onChange={(e) => {
                                     setFormData({ ...formData, category: e.target.value });
