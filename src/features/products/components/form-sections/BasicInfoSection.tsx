@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { FileText, Plus } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { FileText, ChevronDown } from 'lucide-react';
 import { FormData } from "@/features/products/hooks/useProductForm";
 import { SearchableSelect } from "@/shared/components/SearchableSelect";
 
@@ -11,7 +11,6 @@ interface BasicInfoSectionProps {
     isEditMode: boolean;
     handleSeedData?: () => void;
     seeding?: boolean;
-    setShowCategoryModal: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export function BasicInfoSection({
@@ -21,8 +20,7 @@ export function BasicInfoSection({
     productTypesList,
     isEditMode,
     handleSeedData,
-    seeding,
-    setShowCategoryModal
+    seeding
 }: BasicInfoSectionProps) {
     const availableProductTypes = useMemo(() => {
         if (!formData.category_id) return [];
@@ -30,6 +28,15 @@ export function BasicInfoSection({
             (type: any) => String(type.category_id) === String(formData.category_id)
         );
     }, [formData.category_id, productTypesList]);
+
+    // State untuk custom dropdown "Tambah category"
+    const [isCustomCategoryOpen, setIsCustomCategoryOpen] = useState(false);
+    const defaultCategories = ['Cleanser', 'Toner', 'Serum', 'Moisturizer', 'Sunscreen', 'Sunblock'];
+    
+    // Filter opsi berdasarkan teks yang diketik user
+    const filteredCategories = defaultCategories.filter(c => 
+        c.toLowerCase().includes((formData.category || '').toLowerCase())
+    );
 
     return (
         <section className="bg-white dark:bg-[#121212] rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-8">
@@ -43,7 +50,10 @@ export function BasicInfoSection({
                 </div>
             </div>
 
+            {/* Grid Form */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Baris 1 */}
                 <div className="space-y-2">
                     <label className="text-sm font-semibold text-gray-700 dark:text-gray-300" htmlFor="name">Nama Produk <span className="text-red-500">*</span></label>
                     <input
@@ -70,34 +80,23 @@ export function BasicInfoSection({
                     />
                 </div>
 
+                {/* Baris 2 */}
                 <div className="space-y-2">
                     <label className="text-sm font-semibold text-gray-700 dark:text-gray-300" htmlFor="category">Kategori <span className="text-red-500">*</span></label>
-                    <div className="flex gap-2 items-center">
-                        <div className="flex-1">
-                            <SearchableSelect
-                                id="category"
-                                options={categoriesList}
-                                value={formData.category_id}
-                                onChange={(val) => setFormData({ ...formData, category_id: val, product_type_id: '' })}
-                                placeholder="Pilih kategori produk"
-                                required
-                            />
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setShowCategoryModal(true)}
-                            className="p-3 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors shrink-0"
-                            title="Tambah Kategori Baru"
-                        >
-                            <Plus size={20} />
+                    <SearchableSelect
+                        id="category"
+                        options={categoriesList}
+                        value={formData.category_id}
+                        onChange={(val) => setFormData({ ...formData, category_id: val, product_type_id: '' })}
+                        placeholder="Pilih kategori produk"
+                        required
+                    />
+                    {!isEditMode && categoriesList.length === 0 && handleSeedData && (
+                        <button type="button" onClick={handleSeedData} disabled={seeding} className="text-xs text-indigo-600 hover:text-indigo-500 font-medium mt-1 block">
+                            {seeding ? 'Mengisi data...' : 'Data kosong? Isi Default'}
                         </button>
-                    </div>
+                    )}
                 </div>
-                {!isEditMode && categoriesList.length === 0 && handleSeedData && (
-                    <button type="button" onClick={handleSeedData} disabled={seeding} className="text-xs text-indigo-600 hover:text-indigo-500 font-medium mt-1">
-                        {seeding ? 'Mengisi data...' : 'Data kosong? Isi Default'}
-                    </button>
-                )}
 
                 <div className="space-y-2">
                     <label className="text-sm font-semibold text-gray-700 dark:text-gray-300" htmlFor="product_type">Tipe Produk <span className="text-red-500">*</span></label>
@@ -114,20 +113,83 @@ export function BasicInfoSection({
                     </div>
                 </div>
 
+                {/* Baris 3 */}
                 <div className="space-y-2">
                     <label className="text-sm font-semibold text-gray-700 dark:text-gray-300" htmlFor="price">Harga (Rp) <span className="text-red-500">*</span></label>
-                    <input
-                        id="price"
-                        type="number"
-                        value={formData.price}
-                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                        min="0"
-                        step="1"
-                        className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-600"
-                        placeholder="Ex: 50000"
-                        required
-                    />
+                    <div className="relative">
+                        {/* Teks "Rp" nempel di dalam input */}
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <span className="text-gray-500 dark:text-gray-400 font-medium sm:text-sm">Rp</span>
+                        </div>
+                        <input
+                            id="price"
+                            type="text" 
+                            inputMode="numeric" // Membuka numpad di HP
+                            value={formData.price ? new Intl.NumberFormat('id-ID').format(parseInt(formData.price, 10)) : ''}
+                            onChange={(e) => {
+                                // Hapus semua karakter selain angka biar state cuma nyimpen string angka murni
+                                const rawValue = e.target.value.replace(/\D/g, '');
+                                setFormData({ ...formData, price: rawValue });
+                            }}
+                            className="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-600"
+                            placeholder="50.000"
+                            required
+                        />
+                    </div>
                 </div>
+
+                {/* Sub Kategori / Tambah Category (Sebelah kanan Harga) */}
+                <div className="space-y-2">
+                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300" htmlFor="sub_category">Tambah Category <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                        <div className="relative flex items-center">
+                            <input
+                                id="sub_category"
+                                type="text"
+                                value={formData.category || ''}
+                                onChange={(e) => {
+                                    setFormData({ ...formData, category: e.target.value });
+                                    setIsCustomCategoryOpen(true);
+                                }}
+                                onFocus={() => setIsCustomCategoryOpen(true)}
+                                onBlur={() => setTimeout(() => setIsCustomCategoryOpen(false), 200)}
+                                placeholder="Pilih dari list atau ketik baru..."
+                                required
+                                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-600 pr-10"
+                            />
+                            <ChevronDown size={20} className="absolute right-3 text-gray-400 pointer-events-none" />
+                        </div>
+
+                        {/* Dropdown Menu */}
+                        {isCustomCategoryOpen && (
+                            <div className="absolute z-50 w-full mt-1 bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg max-h-48 overflow-y-auto py-1 animate-in fade-in zoom-in-95 duration-100">
+                                <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-800/50">
+                                    Rekomendasi
+                                </div>
+                                {filteredCategories.length > 0 ? (
+                                    filteredCategories.map(cat => (
+                                        <button
+                                            key={cat}
+                                            type="button"
+                                            onClick={() => {
+                                                setFormData({ ...formData, category: cat });
+                                                setIsCustomCategoryOpen(false);
+                                            }}
+                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                                        >
+                                            {cat}
+                                        </button>
+                                    ))
+                                ) : (
+                                    <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                                        Akan ditambahkan: <span className="font-semibold text-indigo-600 dark:text-indigo-400">"{formData.category}"</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
             </div>
 
             <div className="mt-6 flex items-center">
