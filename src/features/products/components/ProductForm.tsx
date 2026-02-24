@@ -6,7 +6,6 @@ import { BasicInfoSection } from "./form-sections/BasicInfoSection";
 import { ProductDetailSection } from "./form-sections/ProductDetailSection";
 import { ProductOptionsSection } from "./form-sections/ProductOptionsSection";
 import { MarketplaceSection } from "./form-sections/MarketplaceSection";
-import { CategoryModal } from "./form-sections/CategoryModal";
 
 interface ProductFormProps {
     formData: FormData;
@@ -15,6 +14,7 @@ interface ProductFormProps {
     // Lists
     categoriesList: { id: string; name: string }[];
     productTypesList: { id: string; name: string }[];
+    existingCategories: string[]; // <-- Tambahan prop
     skinTypeOptions: string[];
     concernOptions: string[];
 
@@ -33,7 +33,6 @@ interface ProductFormProps {
     // Actions
     handleSubmit: (e: React.FormEvent) => void;
     handleSeedData?: () => void;
-    addNewCategory?: (name: string) => Promise<any>;
 
     // Status
     isLoading: boolean;
@@ -47,35 +46,15 @@ interface ProductFormProps {
 
 export default function ProductForm({
     formData, setFormData,
-    categoriesList, productTypesList,
+    categoriesList, productTypesList, existingCategories,
     skinTypeOptions, concernOptions,
     skinTypes, setSkinTypes,
     concerns, setConcerns,
     previewUrl, existingImage, onImageSelect, onRemoveImage,
-    handleSubmit, handleSeedData, addNewCategory,
+    handleSubmit, handleSeedData,
     isLoading, seeding, progress, error, success,
     isEditMode, onCancel
 }: ProductFormProps) {
-
-    const sanitize = (val: string) => val;
-    const [showCategoryModal, setShowCategoryModal] = React.useState(false);
-    const [newCategoryName, setNewCategoryName] = React.useState('');
-    const [isAddingCategory, setIsAddingCategory] = React.useState(false);
-
-    const handleAddCategory = async () => {
-        if (!newCategoryName.trim() || !addNewCategory) return;
-        setIsAddingCategory(true);
-        try {
-            await addNewCategory(newCategoryName);
-            setShowCategoryModal(false);
-            setNewCategoryName('');
-        } catch (error) {
-            console.error(error);
-            alert('Gagal menambah kategori');
-        } finally {
-            setIsAddingCategory(false);
-        }
-    };
 
     return (
         <div className="container mx-auto max-w-5xl py-8">
@@ -110,10 +89,10 @@ export default function ProductForm({
                     setFormData={setFormData}
                     categoriesList={categoriesList}
                     productTypesList={productTypesList}
+                    existingCategories={existingCategories} // <-- Lempar ke section bawah
                     isEditMode={isEditMode}
                     handleSeedData={handleSeedData}
                     seeding={seeding}
-                    setShowCategoryModal={setShowCategoryModal}
                 />
 
                 <ProductDetailSection
@@ -164,15 +143,6 @@ export default function ProductForm({
                     <span className="font-medium">{success}</span>
                 </div>
             )}
-
-            <CategoryModal
-                showCategoryModal={showCategoryModal}
-                setShowCategoryModal={setShowCategoryModal}
-                newCategoryName={newCategoryName}
-                setNewCategoryName={setNewCategoryName}
-                handleAddCategory={handleAddCategory}
-                isAddingCategory={isAddingCategory}
-            />
         </div>
     );
 }
